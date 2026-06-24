@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SCCS - Sistema de Controle de Coleta Seletiva</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    Babel.registerPreset("classic-react", {
+      presets: [
+        [Babel.availablePresets["react"], { runtime: "classic" }],
+        Babel.availablePresets["env"]
+      ]
+    });
+  </script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root { --g: #0f5e3b; --gl: #a6e65a; --bg: #f0f4f0; }
+    * { box-sizing: border-box; }
+    body { background: var(--bg); font-family: 'Segoe UI', sans-serif; margin: 0; }
+    .sidebar {
+      background: linear-gradient(180deg, #0f5e3b 0%, #083d24 100%);
+      width: 230px; height: 100vh; position: fixed; top: 0; left: 0;
+      overflow-y: auto; z-index: 100; box-shadow: 3px 0 15px rgba(0,0,0,.25);
+    }
+    .sidebar .nav-link {
+      color: rgba(255,255,255,.82); border-radius: 8px;
+      margin-bottom: 3px; padding: 9px 14px; font-size: .92rem; transition: all .18s;
+    }
+    .sidebar .nav-link:hover { background: rgba(255,255,255,.13); color: #fff; }
+    .sidebar .nav-link.active { background: var(--gl); color: var(--g); font-weight: 700; }
+    .main-content { margin-left: 230px; padding: 2rem; min-height: 100vh; }
+    .card-top { border-top: 4px solid var(--gl) !important; }
+    .btn-sccs { background: var(--g); border-color: var(--g); color: #fff; }
+    .btn-sccs:hover, .btn-sccs:focus { background: #083d24; border-color: #083d24; color: #fff; }
+    .page-title { color: var(--g); font-weight: 700; border-left: 4px solid var(--gl); padding-left: 12px; }
+    .kpi { border-radius: 12px; border: none; box-shadow: 0 2px 12px rgba(0,0,0,.1); }
+    .table thead th { background: #f1f8f4; color: var(--g); font-weight: 600; border-bottom: 2px solid #d4ebd4; }
+    .badge-concluído, .badge-concluido { background:#d4edda; color:#155724; padding:3px 11px; border-radius:20px; font-size:.78rem; font-weight:600; white-space:nowrap; }
+    .badge-pendente { background:#fff3cd; color:#856404; padding:3px 11px; border-radius:20px; font-size:.78rem; font-weight:600; }
+    .badge-cancelado { background:#f8d7da; color:#721c24; padding:3px 11px; border-radius:20px; font-size:.78rem; font-weight:600; }
+    .rule-box { background:#f0faf0; border-left:4px solid var(--gl); padding:10px 14px; border-radius:6px; font-size:.87rem; }
+    .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1050; display:flex; align-items:center; justify-content:center; }
+    .modal-box { background:#fff; border-radius:10px; width:100%; max-width:620px; max-height:90vh; overflow-y:auto; box-shadow:0 10px 40px rgba(0,0,0,.25); }
+    .modal-hdr { background:var(--g); color:#fff; padding:16px 20px; border-radius:10px 10px 0 0; display:flex; justify-content:space-between; align-items:center; }
+    .modal-hdr h5 { margin:0; font-weight:600; }
+    .modal-close { background:none; border:none; color:#fff; font-size:1.3rem; line-height:1; cursor:pointer; }
+    .toast-wrap { position:fixed; top:18px; right:18px; z-index:9999; display:flex; flex-direction:column; gap:8px; }
+    .toast-item { padding:12px 18px; border-radius:8px; color:#fff; font-size:.9rem; box-shadow:0 4px 14px rgba(0,0,0,.2); animation:slideIn .25s ease; }
+    .toast-ok { background:#198754; }
+    .toast-err { background:#dc3545; }
+    @keyframes slideIn { from{opacity:0;transform:translateX(40px)} to{opacity:1;transform:translateX(0)} }
+    .nav-tabs-sccs .nav-link { color:var(--g); font-size:.88rem; }
+    .nav-tabs-sccs .nav-link.active { background:var(--g); color:#fff; border-color:var(--g); }
+    .ab { padding:3px 9px; font-size:.78rem; }
+    .estoque-pill { display:inline-block; padding:2px 10px; border-radius:20px; font-weight:600; font-size:.82rem; }
+    .est-ok { background:#d4edda; color:#155724; }
+    .est-low { background:#f8d7da; color:#721c24; }
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 100% !important;
+        height: auto !important;
+        position: relative !important;
+        box-shadow: 0 4px 10px rgba(0,0,0,.15) !important;
+        padding: 12px !important;
+      }
+      .sidebar ul {
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        gap: 6px !important;
+      }
+      .sidebar .nav-item {
+        width: auto !important;
+      }
+      .sidebar .nav-link {
+        padding: 6px 12px !important;
+        font-size: 0.85rem !important;
+        margin-bottom: 0 !important;
+      }
+      .main-content {
+        margin-left: 0 !important;
+        padding: 1.5rem 1rem !important;
+      }
+      .sidebar hr {
+        display: none !important;
+      }
+      .sidebar .text-center {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 12px !important;
+        padding: 5px !important;
+        margin-bottom: 5px !important;
+      }
+      .sidebar .text-center > div:first-child {
+        margin: 0 !important;
+        width: 36px !important;
+        height: 36px !important;
+      }
+      .sidebar .text-center > div:first-child svg {
+        width: 20px !important;
+        height: 20px !important;
+      }
+      .sidebar .text-center div {
+        margin: 0 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="classic-react">
+const { useState, useCallback, useMemo } = React;
+
+/* ================================================================
+   BANCO DE DADOS (localStorage)
+================================================================ */
+const DB_KEY = 'sccs_v1';
+
+const SEED = {
+  clientes: [
+    { id:1, nome:'Gabriel Louzada', bairroId:1, rua:'Rua das Flores', numero:'42', email:'gabriel@email.com', telefone:'(28) 98888-1234', cpf:'123.456.789-00', dataCadastro:'2026-01-15' },
+    { id:2, nome:'Maria Silva', bairroId:2, rua:'Av. Principal', numero:'100', email:'maria@email.com', telefone:'(28) 99999-5678', cpf:'987.654.321-00', dataCadastro:'2026-02-20' },
+    { id:3, nome:'Carlos Pereira', bairroId:3, rua:'Rua Nova', numero:'7', email:'carlos@email.com', telefone:'(28) 91111-2222', cpf:'321.654.987-00', dataCadastro:'2026-05-10' },
+  ],
+  colaboradores: [
+    { id:1, nome:'João Costa', nacionalidade:'Brasileiro', email:'joao@sccs.com', cpf:'111.222.333-44', telefone:'(28) 97777-0001', cargaHoraria:'40', cargoId:1 },
+    { id:2, nome:'Ana Souza', nacionalidade:'Brasileira', email:'ana@sccs.com', cpf:'555.666.777-88', telefone:'(28) 96666-0002', cargaHoraria:'40', cargoId:2 },
+  ],
+  cargos: [
+    { id:1, nomeCargo:'Gestor', salario:'3500.00', descricao:'Gestor de operações de coleta', nivelHierarquia:'1' },
+    { id:2, nomeCargo:'Operador', salario:'2000.00', descricao:'Operador de coleta seletiva', nivelHierarquia:'2' },
+  ],
+  materiais: [
+    { id:1, tipoMaterial:'Papel', estado:'Seco' },
+    { id:2, tipoMaterial:'Plástico', estado:'Limpo' },
+    { id:3, tipoMaterial:'Vidro', estado:'Limpo' },
+    { id:4, tipoMaterial:'Metal', estado:'Seco' },
+  ],
+  bairros: [
+    { id:1, nomeBairro:'Zumbi', proximidades:'Centro', populacao:'5000', referencia:'Perto da praça central' },
+    { id:2, nomeBairro:'Centro', proximidades:'Zumbi, Norte', populacao:'12000', referencia:'Av. Principal' },
+    { id:3, nomeBairro:'Norte', proximidades:'Centro', populacao:'8000', referencia:'Escola Municipal Norte' },
+  ],
+  depositos: [
+    { id:1, nomeDeposito:'Depósito Central', cnpj:'12.345.678/0001-99', localizacao:'Rua Industrial, 500' },
+  ],
+  empresas: [
+    { id:1, nome:'ReciclaMax Ltda', cnpj:'98.765.432/0001-11' },
+    { id:2, nome:'EcoTrans S.A.', cnpj:'11.222.333/0001-44' },
+  ],
+  pedidosColeta: [
+    { id:1, clienteId:1, materialId:1, bairroId:1, quantidadeKg:50, volume:30, data:'2026-06-01', status:'Concluído' },
+    { id:2, clienteId:2, materialId:2, bairroId:2, quantidadeKg:30, volume:20, data:'2026-06-05', status:'Pendente' },
+    { id:3, clienteId:1, materialId:3, bairroId:1, quantidadeKg:20, volume:10, data:'2026-06-10', status:'Concluído' },
+  ],
+  recebimentos: [
+    { id:1, idColeta:'COL-001', colaboradorId:1, materialId:1, peso:50, volume:30, data:'2026-06-02' },
+    { id:2, idColeta:'COL-003', colaboradorId:1, materialId:3, peso:20, volume:10, data:'2026-06-11' },
+  ],
+  envios: [
+    { id:1, materialId:1, quantidadeKg:15, volume:10, empresaId:1, data:'2026-06-15' },
+  ],
+  seq: { clientes:4, colaboradores:3, cargos:3, materiais:5, bairros:4, depositos:2, empresas:3, pedidosColeta:4, recebimentos:3, envios:2 }
+};
+
+function loadDB() {
+  try { const r = localStorage.getItem(DB_KEY); return r ? JSON.parse(r) : null; } catch { return null; }
+}
+function persistDB(db) { localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+
+function addRecord(db, entity, fields) {
+  const id = db.seq[entity];
+  return {
+    ...db,
+    seq: { ...db.seq, [entity]: id + 1 },
+    [entity]: [...db[entity], { id, ...fields }]
+  };
+}
+function updateRecord(db, entity, id, fields) {
+  return { ...db, [entity]: db[entity].map(x => x.id === id ? { ...x, ...fields } : x) };
+}
+function deleteRecord(db, entity, id) {
+  return { ...db, [entity]: db[entity].filter(x => x.id !== id) };
+}
+
+function useDB() {
+  const [db, setDbState] = useState(() => loadDB() || { ...SEED });
+  const setDB = useCallback(fn => {
+    setDbState(prev => {
+      const next = fn(prev);
+      persistDB(next);
+      return next;
+    });
+  }, []);
+  return [db, setDB];
+}
+
+/* helpers */
+function fmtDate(d) { if (!d) return '—'; const [y,m,day] = d.split('-'); return `${day}/${m}/${y}`; }
+function byDate(a, b) { return b.data.localeCompare(a.data); }
+function inRange(data, ini, fim) {
+  const ym = (data||'').substring(0,7);
+  if (ini && ym < ini) return false;
+  if (fim && ym > fim) return false;
+  return true;
+}
+
+function getEstoque(db) {
+  const est = {};
+  db.materiais.forEach(m => { est[m.id] = { kg:0, vol:0 }; });
+  db.recebimentos.forEach(r => {
+    if (!est[r.materialId]) est[r.materialId] = { kg:0, vol:0 };
+    est[r.materialId].kg += Number(r.peso);
+    est[r.materialId].vol += Number(r.volume);
+  });
+  db.envios.forEach(e => {
+    if (!est[e.materialId]) est[e.materialId] = { kg:0, vol:0 };
+    est[e.materialId].kg -= Number(e.quantidadeKg);
+    est[e.materialId].vol -= Number(e.volume);
+  });
+  return est;
+}
+
+/* ================================================================
+   UI ATOMS
+================================================================ */
+function Toast({ toasts, dismiss }) {
+  return (
+    <div className="toast-wrap">
+      {toasts.map(t => (
+        <div key={t.id} className={`toast-item ${t.type==='error'?'toast-err':'toast-ok'}`} onClick={() => dismiss(t.id)} style={{cursor:'pointer'}}>
+          {t.msg}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Modal({ show, title, onClose, onConfirm, confirmLabel='Salvar', danger=false, children }) {
+  if (!show) return null;
+  return (
+    <div className="modal-bg" onClick={e => e.target===e.currentTarget && onClose()}>
+      <div className="modal-box">
+        <div className="modal-hdr">
+          <h5>{title}</h5>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        <div className="p-4">{children}</div>
+        {onConfirm && (
+          <div className="d-flex justify-content-end gap-2 px-4 pb-4">
+            <button className="btn btn-secondary btn-sm" onClick={onClose}>Cancelar</button>
+            <button className={`btn btn-sm ${danger?'btn-danger':'btn-sccs'}`} onClick={onConfirm}>{confirmLabel}</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ConfirmModal({ show, msg, onClose, onConfirm }) {
+  return (
+    <Modal show={show} title="Confirmar Remoção" onClose={onClose} onConfirm={onConfirm} confirmLabel="Remover" danger>
+      <p className="mb-0">{msg || 'Deseja remover este registro? A ação não pode ser desfeita.'}</p>
+    </Modal>
+  );
+}
+
+function StatusBadge({ status }) {
+  const cls = `badge-${(status||'').toLowerCase().replace('í','i').replace('ó','o')}`;
+  return <span className={cls}>{status}</span>;
+}
+
+/* ================================================================
+   SIDEBAR
+================================================================ */
+const PAGES = ['Dashboard','Pedido de Coleta','Recebimento','Envio de Materiais','Relatórios','Cadastros'];
+
+function Sidebar({ page, setPage }) {
+  return (
+    <nav className="sidebar d-flex flex-column p-3">
+      <div className="text-center py-3 mb-2">
+        <div style={{width:50,height:50,borderRadius:'50%',background:'rgba(166,230,90,.18)',margin:'0 auto 8px',display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#a6e65a" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+        <div className="text-white fw-bold fs-5 lh-1">SCCS</div>
+        <small className="text-white-50">Eco Louzada</small>
+      </div>
+      <hr className="border-secondary my-2"/>
+      <ul className="nav nav-pills flex-column gap-1 flex-grow-1">
+        {PAGES.map(p => (
+          <li key={p} className="nav-item">
+            <button className={`nav-link w-100 text-start ${page===p?'active':''}`} onClick={() => setPage(p)}>{p}</button>
+          </li>
+        ))}
+      </ul>
+      <hr className="border-secondary my-2"/>
+      <div className="text-center">
+        <small className="text-white-50">Versão 1.0 © 2026</small>
+      </div>
+    </nav>
+  );
+}
+
+/* ================================================================
+   DASHBOARD
+================================================================ */
+function Dashboard({ db }) {
+  const now = new Date();
+  const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const pedMes = db.pedidosColeta.filter(p => p.data.startsWith(ym)).length;
+  const kgTotal = db.recebimentos.reduce((s,r) => s + Number(r.peso), 0);
+  const pendentes = db.pedidosColeta.filter(p => p.status==='Pendente').length;
+  const envios = db.envios.length;
+  const est = getEstoque(db);
+
+  return (
+    <div>
+      <h2 className="page-title mb-4">Dashboard</h2>
+      <div className="row g-3 mb-4">
+        {[
+          { l:'Pedidos no mês', v:pedMes, bg:'#0f5e3b' },
+          { l:'Kg coletados (total)', v:kgTotal.toLocaleString('pt-BR'), bg:'#1a7a4e' },
+          { l:'Pedidos pendentes', v:pendentes, bg:'#b45309' },
+          { l:'Envios realizados', v:envios, bg:'#1d4ed8' },
+        ].map(k => (
+          <div key={k.l} className="col-6 col-md-3">
+            <div className="card kpi p-3" style={{background:k.bg}}>
+              <p className="mb-1" style={{color:'rgba(255,255,255,.7)',fontSize:'.82rem'}}>{k.l}</p>
+              <p className="display-6 fw-bold mb-0 text-white">{k.v}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="row g-3">
+        <div className="col-md-5">
+          <div className="card card-top shadow-sm h-100">
+            <div className="card-header bg-white fw-bold" style={{color:'var(--g)'}}>Estoque no Depósito</div>
+            <div className="card-body p-0">
+              <table className="table mb-0">
+                <thead><tr><th>Material</th><th>Kg</th><th>m³</th><th>Situação</th></tr></thead>
+                <tbody>
+                  {db.materiais.map(m => {
+                    const e = est[m.id]||{kg:0,vol:0};
+                    return (
+                      <tr key={m.id}>
+                        <td>{m.tipoMaterial}</td>
+                        <td><strong>{e.kg.toFixed(0)}</strong></td>
+                        <td>{e.vol.toFixed(0)}</td>
+                        <td><span className={`estoque-pill ${e.kg>=100?'est-ok':'est-low'}`}>{e.kg>=100?'✓ OK':'⚠ Baixo'}</span></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div className="col-md-7">
+          <div className="card card-top shadow-sm h-100">
+            <div className="card-header bg-white fw-bold" style={{color:'var(--g)'}}>Últimos Pedidos de Coleta</div>
+            <div className="card-body p-0">
+              <table className="table mb-0">
+                <thead><tr><th>Cliente</th><th>Material</th><th>Kg</th><th>Data</th><th>Status</th></tr></thead>
+                <tbody>
+                  {[...db.pedidosColeta].sort(byDate).slice(0,6).map(p => {
+                    const cli = db.clientes.find(c => c.id===p.clienteId);
+                    const mat = db.materiais.find(m => m.id===p.materialId);
+                    return (
+                      <tr key={p.id}>
+                        <td>{cli?.nome||'—'}</td>
+                        <td>{mat?.tipoMaterial||'—'}</td>
+                        <td>{p.quantidadeKg}</td>
+                        <td>{fmtDate(p.data)}</td>
+                        <td><StatusBadge status={p.status}/></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ================================================================
+   PEDIDO DE COLETA — RF01
+================================================================ */
+function PedidoColetaPage({ db, setDB, toast }) {
+  const E = { clienteId:'', materialId:'', bairroId:'', quantidadeKg:'', volume:'', data:new Date().toISOString().slice(0,10), status:'Pendente' };
+  const [form, setForm] = useState(E);
+  const [editing, setEditing] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [delId, setDelId] = useState(null);
+
+  const fld = (k,v) => setForm(p => ({...p,[k]:v}));
+
+  function validate() {
+    const { clienteId, materialId, bairroId, quantidadeKg, volume, data } = form;
+    if (!clienteId||!materialId||!bairroId||!quantidadeKg||!volume||!data) return 'Preencha todos os campos obrigatórios.';
+    const kg = Number(quantidadeKg);
+    if (kg<=0) return 'Quantidade deve ser maior que zero.';
+    const ym = data.substring(0,7);
+    const cId = Number(clienteId), mId = Number(materialId);
+    const kgMes = db.pedidosColeta.filter(p => p.clienteId===cId && p.materialId===mId && p.data.startsWith(ym) && p.id!==editing).reduce((s,p)=>s+p.quantidadeKg,0);
+    if (kgMes+kg>100) return `Limite de 100 Kg do mesmo material/mês atingido. Já solicitado: ${kgMes} Kg.`;
+    const pedMes = db.pedidosColeta.filter(p => p.clienteId===cId && p.data.startsWith(ym) && p.id!==editing).length;
+    if (pedMes>=10) return 'Limite de 10 pedidos/mês por cliente atingido.';
+    return null;
+  }
+
+  function save() {
+    const err = validate();
+    if (err) { toast(err,'error'); return; }
+    const rec = { ...form, clienteId:+form.clienteId, materialId:+form.materialId, bairroId:+form.bairroId, quantidadeKg:+form.quantidadeKg, volume:+form.volume };
+    setDB(db => editing ? updateRecord(db,'pedidosColeta',editing,rec) : addRecord(db,'pedidosColeta',rec));
+    toast(editing?'Pedido atualizado!':'Pedido registrado!');
+    setForm(E); setEditing(null); setShowForm(false);
+  }
+
+  function edit(p) {
+    setForm({ clienteId:String(p.clienteId), materialId:String(p.materialId), bairroId:String(p.bairroId), quantidadeKg:String(p.quantidadeKg), volume:String(p.volume), data:p.data, status:p.status });
+    setEditing(p.id); setShowForm(true);
+  }
+
+  return (
+    <div>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h2 className="page-title mb-0">Pedido de Coleta <small className="fs-6 fw-normal text-muted">RF01</small></h2>
+        <button className="btn btn-sccs btn-sm" onClick={()=>{setForm(E);setEditing(null);setShowForm(true);}}>+ Novo Pedido</button>
+      </div>
+      <div className="rule-box mb-3">
+        <strong>Regras:</strong> Máx. 100 Kg do mesmo material por mês por cliente &nbsp;|&nbsp; Máx. 10 pedidos/mês por cliente.
+      </div>
+      <div className="card card-top shadow-sm">
+        <div className="card-body p-0">
+          <table className="table align-middle mb-0 table-hover">
+            <thead><tr><th>#</th><th>Cliente</th><th>Material</th><th>Bairro</th><th>Kg</th><th>m³</th><th>Data</th><th>Status</th><th>Ações</th></tr></thead>
+            <tbody>
+              {db.pedidosColeta.length===0 && <tr><td colSpan={9} className="text-center text-muted py-4">Nenhum pedido registrado.</td></tr>}
+              {[...db.pedidosColeta].sort(byDate).map(p => {
+                const cli=db.clientes.find(c=>c.id===p.clienteId), mat=db.materiais.find(m=>m.id===p.materialId), bai=db.bairros.find(b=>b.id===p.bairroId);
+                return (
+                  <tr key={p.id}>
+                    <td className="text-muted fw-bold">{String(p.id).padStart(3,'0')}</td>
+                    <td>{cli?.nome||'—'}</td><td>{mat?.tipoMaterial||'—'}</td><td>{bai?.nomeBairro||'—'}</td>
+                    <td>{p.quantidadeKg} Kg</td><td>{p.volume} m³</td><td>{fmtDate(p.data)}</td>
+                    <td><StatusBadge status={p.status}/></td>
+                    <td>
+                      <button className="btn btn-outline-primary ab me-1" onClick={()=>edit(p)}>Editar</button>
+                      <button className="btn btn-outline-danger ab" onClick={()=>setDelId(p.id)}>Remover</button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <Modal show={showForm} title={editing?'Editar Pedido de Coleta':'Novo Pedido de Coleta'} onClose={()=>setShowForm(false)} onConfirm={save}>
+        <div className="row g-3">
+          <div className="col-md-6"><label className="form-label">Cliente *</label>
+            <select className="form-select form-select-sm" value={form.clienteId} onChange={e=>fld('clienteId',e.target.value)}>
+              <option value="">Selecione...</option>{db.clientes.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}
+            </select></div>
+          <div className="col-md-6"><label className="form-label">Material *</label>
+            <select className="form-select form-select-sm" value={form.materialId} onChange={e=>fld('materialId',e.target.value)}>
+              <option value="">Selecione...</option>{db.materiais.map(m=><option key={m.id} value={m.id}>{m.tipoMaterial}</option>)}
+            </select></div>
+          <div className="col-md-6"><label className="form-label">Bairro *</label>
+            <select className="form-select form-select-sm" value={form.bairroId} onChange={e=>fld('bairroId',e.target.value)}>
+              <option value="">Selecione...</option>{db.bairros.map(b=><option key={b.id} value={b.id}>{b.nomeBairro}</option>)}
+            </select></div>
+          <div className="col-md-6"><label className="form-label">Data *</label>
+            <input type="date" className="form-control form-control-sm" value={form.data} onChange={e=>fld('data',e.target.value)}/></div>
+          <div className="col-md-4"><label className="form-label">Quantidade (Kg) *</label>
+            <input type="number" className="form-control form-control-sm" min="1" value={form.quantidadeKg} onChange={e=>fld('quantidadeKg',e.target.value)}/></div>
+          <div className="col-md-4"><label className="form-label">Volume (m³) *</label>
+            <input type="number" className="form-control form-control-sm" min="1" value={form.volume} onChange={e=>fld('volume',e.target.value)}/></div>
+          <div className="col-md-4"><label className="form-label">Status</label>
+            <select className="form-select form-select-sm" value={form.status} onChange={e=>fld('status',e.target.value)}>
+              <option>Pendente</option><option>Concluído</option><option>Cancelado</option>
+            </select></div>
+        </div>
+      </Modal>
+      <ConfirmModal show={!!delId} onClose={()=>setDelId(null)} onConfirm={()=>{setDB(db=>deleteRecord(db,'pedidosColeta',delId));toast('Pedido removido.');setDelId(null);}}/>
+    </div>
+  );
+}
+
+/* ================================================================
+   RECEBIMENTO — RF03
+================================================================ */
+function RecebimentoPage({ db, setDB, toast }) {
+  const E = { idColeta:'', colaboradorId:'', materialId:'', peso:'', volume:'', data:new Date().toISOString().slice(0,10) };
+  const [form, setForm] = useState(E);
+  const [editing, setEditing] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [delId, setDelId] = useState(null);
+  const fld = (k,v) => setForm(p=>({...p,[k]:v}));
+
+  const colab = form.colaboradorId ? db.colaboradores.find(c=>c.id===+form.colaboradorId) : null;
+  const cargo = colab ? db.cargos.find(c=>c.id===colab.cargoId) : null;
+
+  function validate() {
+    const {idColeta,colaboradorId,materialId,peso,volume,data}=form;
+    if (!idColeta||!colaboradorId||!materialId||!peso||!volume||!data) return 'Preencha todos os campos obrigatórios.';
+    if (!cargo||cargo.nomeCargo.toLowerCase()!=='gestor') return 'Somente colaboradores com cargo de Gestor podem registrar recebimentos.';
+    if (db.recebimentos.find(r=>r.idColeta===idColeta&&r.id!==editing)) return `ID de coleta "${idColeta}" já foi registrado.`;
+    return null;
+  }
+
+  function save() {
+    const err=validate(); if(err){toast(err,'error');return;}
+    const rec={...form,colaboradorId:+form.colaboradorId,materialId:+form.materialId,peso:+form.peso,volume:+form.volume};
+    setDB(db=>editing?updateRecord(db,'recebimentos',editing,rec):addRecord(db,'recebimentos',rec));
+    toast(editing?'Recebimento atualizado!':'Recebimento registrado!');
+    setForm(E);setEditing(null);setShowForm(false);
+  }
+
+  function edit(r) {
+    setForm({idColeta:r.idColeta,colaboradorId:String(r.colaboradorId),materialId:String(r.materialId),peso:String(r.peso),volume:String(r.volume),data:r.data});
+    setEditing(r.id);setShowForm(true);
+  }
+
+  return (
+    <div>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h2 className="page-title mb-0">Recebimento de Materiais <small className="fs-6 fw-normal text-muted">RF03</small></h2>
+        <button className="btn btn-sccs btn-sm" onClick={()=>{setForm(E);setEditing(null);setShowForm(true);}}>+ Registrar</button>
+      </div>
+      <div className="rule-box mb-3">
+        <strong>Regras:</strong> ID de coleta único por recebimento &nbsp;|&nbsp; Somente colaborador com cargo <strong>Gestor</strong> pode registrar.
+      </div>
+      <div className="card card-top shadow-sm">
+        <div className="card-body p-0">
+          <table className="table align-middle mb-0 table-hover">
+            <thead><tr><th>ID Coleta</th><th>Colaborador</th><th>Cargo</th><th>Material</th><th>Peso (Kg)</th><th>Volume (m³)</th><th>Data</th><th>Ações</th></tr></thead>
+            <tbody>
+              {db.recebimentos.length===0&&<tr><td colSpan={8} className="text-center text-muted py-4">Nenhum recebimento.</td></tr>}
+              {[...db.recebimentos].sort(byDate).map(r=>{
+                const col=db.colaboradores.find(c=>c.id===r.colaboradorId),crg=col?db.cargos.find(c=>c.id===col.cargoId):null,mat=db.materiais.find(m=>m.id===r.materialId);
+                return (
+                  <tr key={r.id}>
+                    <td className="fw-bold">{r.idColeta}</td><td>{col?.nome||'—'}</td><td>{crg?.nomeCargo||'—'}</td>
+                    <td>{mat?.tipoMaterial||'—'}</td><td>{r.peso} Kg</td><td>{r.volume} m³</td><td>{fmtDate(r.data)}</td>
+                    <td>
+                      <button className="btn btn-outline-primary ab me-1" onClick={()=>edit(r)}>Editar</button>
+                      <button className="btn btn-outline-danger ab" onClick={()=>setDelId(r.id)}>Remover</button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <Modal show={showForm} title={editing?'Editar Recebimento':'Registrar Recebimento'} onClose={()=>setShowForm(false)} onConfirm={save}>
+        <div className="row g-3">
+          <div className="col-md-6"><label className="form-label">ID da Coleta *</label>
+            <input className="form-control form-control-sm" placeholder="Ex: COL-001" value={form.idColeta} onChange={e=>fld('idColeta',e.target.value)}/></div>
+          <div className="col-md-6"><label className="form-label">Data *</label>
+            <input type="date" className="form-control form-control-sm" value={form.data} onChange={e=>fld('data',e.target.value)}/></div>
+          <div className="col-md-6"><label className="form-label">Colaborador *</label>
+            <select className="form-select form-select-sm" value={form.colaboradorId} onChange={e=>fld('colaboradorId',e.target.value)}>
+              <option value="">Selecione...</option>{db.colaboradores.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}
+            </select></div>
+          <div className="col-md-6"><label className="form-label">Cargo</label>
+            <input className="form-control form-control-sm" value={cargo?.nomeCargo||'—'} disabled/></div>
+          <div className="col-md-6"><label className="form-label">Material *</label>
+            <select className="form-select form-select-sm" value={form.materialId} onChange={e=>fld('materialId',e.target.value)}>
+              <option value="">Selecione...</option>{db.materiais.map(m=><option key={m.id} value={m.id}>{m.tipoMaterial}</option>)}
+            </select></div>
+          <div className="col-md-3"><label className="form-label">Peso (Kg) *</label>
+            <input type="number" className="form-control form-control-sm" min="1" value={form.peso} onChange={e=>fld('peso',e.target.value)}/></div>
+          <div className="col-md-3"><label className="form-label">Volume (m³) *</label>
+            <input type="number" className="form-control form-control-sm" min="1" value={form.volume} onChange={e=>fld('volume',e.target.value)}/></div>
+        </div>
+      </Modal>
+      <ConfirmModal show={!!delId} onClose={()=>setDelId(null)} onConfirm={()=>{setDB(db=>deleteRecord(db,'recebimentos',delId));toast('Recebimento removido.');setDelId(null);}}/>
+    </div>
+  );
+}
+
+/* ================================================================
+   ENVIO DE MATERIAIS — RF02
+================================================================ */
+function EnvioPage({ db, setDB, toast }) {
+  const E = { materialId:'', quantidadeKg:'', volume:'', empresaId:'', data:new Date().toISOString().slice(0,10) };
+  const [form, setForm] = useState(E);
+  const [editing, setEditing] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [delId, setDelId] = useState(null);
+  const fld = (k,v) => setForm(p=>({...p,[k]:v}));
+  const est = getEstoque(db);
+
+  function validate() {
+    const {materialId,quantidadeKg,volume,empresaId,data}=form;
+    if(!materialId||!quantidadeKg||!volume||!empresaId||!data) return 'Preencha todos os campos obrigatórios.';
+    const mId=+materialId, kg=+quantidadeKg, eId=+empresaId;
+    const eAtual=(est[mId]?.kg||0) + (editing ? (db.envios.find(e=>e.id===editing)?.quantidadeKg||0) : 0);
+    if(eAtual<100) return `Estoque insuficiente: apenas ${eAtual.toFixed(0)} Kg disponíveis. Mínimo: 100 Kg.`;
+    if(kg>eAtual) return `Quantidade (${kg} Kg) excede o estoque (${eAtual.toFixed(0)} Kg).`;
+    const conf=db.envios.find(e=>e.empresaId===eId&&e.materialId!==mId&&e.id!==editing);
+    if(conf){const mc=db.materiais.find(m=>m.id===conf.materialId);return `Empresa já possui envio de "${mc?.tipoMaterial}". Só 1 tipo por empresa.`;}
+    return null;
+  }
+
+  function save() {
+    const err=validate(); if(err){toast(err,'error');return;}
+    const rec={...form,materialId:+form.materialId,quantidadeKg:+form.quantidadeKg,volume:+form.volume,empresaId:+form.empresaId};
+    setDB(db=>editing?updateRecord(db,'envios',editing,rec):addRecord(db,'envios',rec));
+    toast(editing?'Envio atualizado!':'Envio registrado!');
+    setForm(E);setEditing(null);setShowForm(false);
+  }
+
+  function edit(e) {
+    setForm({materialId:String(e.materialId),quantidadeKg:String(e.quantidadeKg),volume:String(e.volume),empresaId:String(e.empresaId),data:e.data});
+    setEditing(e.id);setShowForm(true);
+  }
+
+  return (
+    <div>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h2 className="page-title mb-0">Envio de Materiais <small className="fs-6 fw-normal text-muted">RF02</small></h2>
+        <button className="btn btn-sccs btn-sm" onClick={()=>{setForm(E);setEditing(null);setShowForm(true);}}>+ Registrar Envio</button>
+      </div>
+      <div className="rule-box mb-3">
+        <strong>Regras:</strong> Mínimo 100 Kg em depósito para envio &nbsp;|&nbsp; Apenas 1 tipo de material por empresa terceirizada.
+      </div>
+      <div className="row g-2 mb-3">
+        {db.materiais.map(m=>{
+          const e=est[m.id]||{kg:0,vol:0};
+          return (
+            <div key={m.id} className="col-6 col-md-3">
+              <div className="card shadow-sm border-0 py-2 px-3" style={{borderLeft:`4px solid ${e.kg>=100?'#a6e65a':'#f87171'}`}}>
+                <small className="text-muted">{m.tipoMaterial}</small>
+                <strong style={{color:e.kg>=100?'#0f5e3b':'#dc2626'}}>{e.kg.toFixed(0)} Kg</strong>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="card card-top shadow-sm">
+        <div className="card-body p-0">
+          <table className="table align-middle mb-0 table-hover">
+            <thead><tr><th>#</th><th>Material</th><th>Quantidade (Kg)</th><th>Volume (m³)</th><th>Empresa</th><th>Data</th><th>Ações</th></tr></thead>
+            <tbody>
+              {db.envios.length===0&&<tr><td colSpan={7} className="text-center text-muted py-4">Nenhum envio registrado.</td></tr>}
+              {[...db.envios].sort(byDate).map(e=>{
+                const mat=db.materiais.find(m=>m.id===e.materialId),emp=db.empresas.find(x=>x.id===e.empresaId);
+                return (
+                  <tr key={e.id}>
+                    <td className="text-muted fw-bold">{String(e.id).padStart(3,'0')}</td>
+                    <td>{mat?.tipoMaterial||'—'}</td><td>{e.quantidadeKg} Kg</td><td>{e.volume} m³</td>
+                    <td>{emp?.nome||'—'}</td><td>{fmtDate(e.data)}</td>
+                    <td>
+                      <button className="btn btn-outline-primary ab me-1" onClick={()=>edit(e)}>Editar</button>
+                      <button className="btn btn-outline-danger ab" onClick={()=>setDelId(e.id)}>Remover</button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <Modal show={showForm} title={editing?'Editar Envio':'Registrar Envio'} onClose={()=>setShowForm(false)} onConfirm={save}>
+        <div className="row g-3">
+          <div className="col-md-6"><label className="form-label">Material *</label>
+            <select className="form-select form-select-sm" value={form.materialId} onChange={e=>fld('materialId',e.target.value)}>
+              <option value="">Selecione...</option>
+              {db.materiais.map(m=><option key={m.id} value={m.id}>{m.tipoMaterial} — {(est[m.id]?.kg||0).toFixed(0)} Kg disp.</option>)}
+            </select></div>
+          <div className="col-md-6"><label className="form-label">Empresa Terceirizada *</label>
+            <select className="form-select form-select-sm" value={form.empresaId} onChange={e=>fld('empresaId',e.target.value)}>
+              <option value="">Selecione...</option>{db.empresas.map(x=><option key={x.id} value={x.id}>{x.nome}</option>)}
+            </select></div>
+          <div className="col-md-4"><label className="form-label">Quantidade (Kg) *</label>
+            <input type="number" className="form-control form-control-sm" min="1" value={form.quantidadeKg} onChange={e=>fld('quantidadeKg',e.target.value)}/></div>
+          <div className="col-md-4"><label className="form-label">Volume (m³) *</label>
+            <input type="number" className="form-control form-control-sm" min="1" value={form.volume} onChange={e=>fld('volume',e.target.value)}/></div>
+          <div className="col-md-4"><label className="form-label">Data *</label>
+            <input type="date" className="form-control form-control-sm" value={form.data} onChange={e=>fld('data',e.target.value)}/></div>
+        </div>
+      </Modal>
+      <ConfirmModal show={!!delId} onClose={()=>setDelId(null)} onConfirm={()=>{setDB(db=>deleteRecord(db,'envios',delId));toast('Envio removido.');setDelId(null);}}/>
+    </div>
+  );
+}
+
+/* ================================================================
+   RELATÓRIOS — RF04 a RF09
+================================================================ */
+function RelatoriosPage({ db }) {
+  const [tipo, setTipo] = useState('materiais-coletados');
+  const [ini, setIni] = useState('');
+  const [fim, setFim] = useState('');
+  const est = getEstoque(db);
+
+  const TIPOS = {
+    'materiais-coletados': 'RF04 — Materiais Coletados',
+    'bairros': 'RF05 — Utilização dos Bairros',
+    'pedidos': 'RF06 — Pedidos de Coleta',
+    'deposito': 'RF07 — Materiais no Depósito',
+    'enviados': 'RF08 — Materiais Enviados',
+    'clientes-novos': 'RF09 — Clientes Novos',
+  };
+
+  const rel = useMemo(() => {
+    if (tipo==='materiais-coletados') {
+      const rows=[...db.recebimentos].filter(r=>inRange(r.data,ini,fim)).sort(byDate).map(r=>{
+        const mat=db.materiais.find(m=>m.id===r.materialId);
+        return [mat?.tipoMaterial||'—', `${r.peso} Kg`, `${r.volume} m³`, fmtDate(r.data)];
+      });
+      return {cols:['Material','Peso','Volume','Data'], rows};
+    }
+    if (tipo==='bairros') {
+      const cnt={};
+      db.pedidosColeta.filter(p=>inRange(p.data,ini,fim)).forEach(p=>{cnt[p.bairroId]=(cnt[p.bairroId]||0)+1;});
+      const rows=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).map(([bid,q])=>{
+        const b=db.bairros.find(x=>x.id===+bid);
+        return [b?.nomeBairro||'—', q];
+      });
+      return {cols:['Bairro','Qtd. Pedidos'], rows};
+    }
+    if (tipo==='pedidos') {
+      const rows=[...db.pedidosColeta].filter(p=>inRange(p.data,ini,fim)).sort(byDate).map(p=>{
+        const cli=db.clientes.find(c=>c.id===p.clienteId),mat=db.materiais.find(m=>m.id===p.materialId);
+        return [cli?.nome||'—',mat?.tipoMaterial||'—',`${p.volume} m³`,`${p.quantidadeKg} Kg`,fmtDate(p.data),p.status];
+      });
+      return {cols:['Cliente','Material','Volume','Peso','Data','Status'], rows};
+    }
+    if (tipo==='deposito') {
+      const rows=db.materiais.sort((a,b)=>a.id-b.id).map(m=>[m.tipoMaterial,`${(est[m.id]?.vol||0).toFixed(0)} m³`,`${(est[m.id]?.kg||0).toFixed(0)} Kg`]);
+      return {cols:['Material','Volume','Peso'], rows};
+    }
+    if (tipo==='enviados') {
+      const rows=[...db.envios].filter(e=>inRange(e.data,ini,fim)).sort(byDate).map(e=>{
+        const mat=db.materiais.find(m=>m.id===e.materialId),emp=db.empresas.find(x=>x.id===e.empresaId);
+        return [mat?.tipoMaterial||'—',`${e.quantidadeKg} Kg`,`${e.volume} m³`,emp?.nome||'—',fmtDate(e.data)];
+      });
+      return {cols:['Material','Peso','Volume','Empresa','Data'], rows};
+    }
+    if (tipo==='clientes-novos') {
+      const rows=[...db.clientes].filter(c=>inRange(c.dataCadastro,ini,fim)).sort((a,b)=>b.dataCadastro.localeCompare(a.dataCadastro)).map(c=>[c.nome,c.telefone,fmtDate(c.dataCadastro)]);
+      return {cols:['Nome','Telefone','Cadastro'], rows};
+    }
+    return {cols:[],rows:[]};
+  },[tipo,ini,fim,db]);
+
+  return (
+    <div>
+      <h2 className="page-title mb-4">Relatórios</h2>
+      <div className="card card-top shadow-sm mb-4">
+        <div className="card-body">
+          <div className="row g-3 align-items-end">
+            <div className="col-md-4"><label className="form-label">Tipo de Relatório</label>
+              <select className="form-select form-select-sm" value={tipo} onChange={e=>setTipo(e.target.value)}>
+                {Object.entries(TIPOS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+              </select></div>
+            <div className="col-md-3"><label className="form-label">Mês Início</label>
+              <input type="month" className="form-control form-control-sm" value={ini} onChange={e=>setIni(e.target.value)}/></div>
+            <div className="col-md-3"><label className="form-label">Mês Fim</label>
+              <input type="month" className="form-control form-control-sm" value={fim} onChange={e=>setFim(e.target.value)}/></div>
+            <div className="col-md-2">
+              <button className="btn btn-outline-secondary btn-sm w-100" onClick={()=>{setIni('');setFim('');}}>Limpar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="card shadow-sm">
+        <div className="card-header bg-white d-flex justify-content-between align-items-center">
+          <strong style={{color:'var(--g)'}}>{TIPOS[tipo]}</strong>
+          <span className="badge bg-secondary">{rel.rows.length} registro(s)</span>
+        </div>
+        <div className="card-body p-0">
+          <div className="table-responsive">
+            <table className="table align-middle mb-0 table-hover">
+              <thead><tr>{rel.cols.map(c=><th key={c}>{c}</th>)}</tr></thead>
+              <tbody>
+                {rel.rows.length===0&&<tr><td colSpan={rel.cols.length} className="text-center text-muted py-4">Nenhum dado encontrado para o período.</td></tr>}
+                {rel.rows.map((row,i)=>(
+                  <tr key={i}>{row.map((cell,j)=><td key={j}>{cell}</td>)}</tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ================================================================
+   CADASTROS — RF1 a RF24 (CRUD genérico)
+================================================================ */
+function CrudTable({ title, entity, items, cols, fields, getRow, db, setDB, toast }) {
+  const E = Object.fromEntries(fields.map(f=>[f.key,'']));
+  const [form, setForm] = useState(E);
+  const [editing, setEditing] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [delId, setDelId] = useState(null);
+  const fld = (k,v) => setForm(p=>({...p,[k]:v}));
+
+  function edit(item) {
+    setForm(Object.fromEntries(fields.map(f=>[f.key,String(item[f.key]??'')])));
+    setEditing(item.id); setShowForm(true);
+  }
+  function save() {
+    setDB(db => editing ? updateRecord(db,entity,editing,form) : addRecord(db,entity,form));
+    toast(editing?'Registro atualizado!':'Registro criado!');
+    setForm(E); setEditing(null); setShowForm(false);
+  }
+
+  return (
+    <div>
+      <div className="d-flex justify-content-end mb-3">
+        <button className="btn btn-sccs btn-sm" onClick={()=>{setForm(E);setEditing(null);setShowForm(true);}}>+ Novo {title}</button>
+      </div>
+      <div className="table-responsive">
+        <table className="table align-middle table-hover">
+          <thead><tr><th>#</th>{cols.map(c=><th key={c}>{c}</th>)}<th>Ações</th></tr></thead>
+          <tbody>
+            {items.length===0&&<tr><td colSpan={cols.length+2} className="text-center text-muted py-3">Nenhum registro cadastrado.</td></tr>}
+            {items.map(item=>(
+              <tr key={item.id}>
+                <td className="text-muted fw-bold">{String(item.id).padStart(3,'0')}</td>
+                {getRow(item, db).map((cell,j)=><td key={j}>{cell}</td>)}
+                <td>
+                  <button className="btn btn-outline-primary ab me-1" onClick={()=>edit(item)}>Editar</button>
+                  <button className="btn btn-outline-danger ab" onClick={()=>setDelId(item.id)}>Remover</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <Modal show={showForm} title={editing?`Editar ${title}`:`Novo ${title}`} onClose={()=>setShowForm(false)} onConfirm={save}>
+        <div className="row g-3">
+          {fields.map(f=>(
+            <div key={f.key} className={f.col||'col-md-6'}>
+              <label className="form-label">{f.label}{f.req?' *':''}</label>
+              {f.type==='select'
+                ? <select className="form-select form-select-sm" value={form[f.key]} onChange={e=>fld(f.key,e.target.value)}>
+                    <option value="">Selecione...</option>
+                    {f.opts?.map(o=><option key={o.v} value={o.v}>{o.l}</option>)}
+                  </select>
+                : <input type={f.type||'text'} className="form-control form-control-sm" placeholder={f.ph||''} value={form[f.key]} onChange={e=>fld(f.key,e.target.value)}/>
+              }
+            </div>
+          ))}
+        </div>
+      </Modal>
+      <ConfirmModal show={!!delId} onClose={()=>setDelId(null)} onConfirm={()=>{setDB(db=>deleteRecord(db,entity,delId));toast('Registro removido.');setDelId(null);}}/>
+    </div>
+  );
+}
+
+function CadastrosPage({ db, setDB, toast }) {
+  const TABS = [
+    { id:'clientes', label:'Clientes' },
+    { id:'colaboradores', label:'Colaboradores' },
+    { id:'materiais', label:'Materiais' },
+    { id:'bairros', label:'Bairros' },
+    { id:'cargos', label:'Cargos' },
+    { id:'depositos', label:'Depósitos' },
+    { id:'empresas', label:'Empresas' },
+  ];
+  const [tab, setTab] = useState('clientes');
+  const props = { db, setDB, toast };
+
+  return (
+    <div>
+      <h2 className="page-title mb-4">Cadastros <small className="fs-6 fw-normal text-muted">RF1–RF24</small></h2>
+      <ul className="nav nav-tabs nav-tabs-sccs mb-4 flex-wrap">
+        {TABS.map(t=>(
+          <li key={t.id} className="nav-item">
+            <button className={`nav-link ${tab===t.id?'active':''}`} onClick={()=>setTab(t.id)}>{t.label}</button>
+          </li>
+        ))}
+      </ul>
+
+      {tab==='clientes' && (
+        <CrudTable title="Cliente" entity="clientes" items={db.clientes}
+          cols={['Nome','CPF','Email','Telefone','Bairro']}
+          fields={[
+            {key:'nome',label:'Nome',req:true,col:'col-md-8'},
+            {key:'cpf',label:'CPF',ph:'000.000.000-00'},
+            {key:'email',label:'Email',type:'email'},
+            {key:'telefone',label:'Telefone',ph:'(28) 00000-0000'},
+            {key:'bairroId',label:'Bairro',type:'select',opts:db.bairros.map(b=>({v:b.id,l:b.nomeBairro}))},
+            {key:'rua',label:'Rua'},
+            {key:'numero',label:'Nº',col:'col-md-2'},
+            {key:'dataCadastro',label:'Data de Cadastro',type:'date',col:'col-md-4'},
+          ]}
+          getRow={(item,db)=>{const b=db.bairros.find(x=>x.id===+item.bairroId);return[item.nome,item.cpf,item.email,item.telefone,b?.nomeBairro||'—'];}}
+          {...props}
+        />
+      )}
+      {tab==='colaboradores' && (
+        <CrudTable title="Colaborador" entity="colaboradores" items={db.colaboradores}
+          cols={['Nome','CPF','Email','Telefone','Cargo']}
+          fields={[
+            {key:'nome',label:'Nome',req:true,col:'col-md-8'},
+            {key:'nacionalidade',label:'Nacionalidade'},
+            {key:'cpf',label:'CPF',ph:'000.000.000-00'},
+            {key:'email',label:'Email',type:'email'},
+            {key:'telefone',label:'Telefone'},
+            {key:'cargaHoraria',label:'Carga Horária (h)',type:'number',ph:'40'},
+            {key:'cargoId',label:'Cargo',type:'select',opts:db.cargos.map(c=>({v:c.id,l:c.nomeCargo}))},
+          ]}
+          getRow={(item,db)=>{const c=db.cargos.find(x=>x.id===+item.cargoId);return[item.nome,item.cpf,item.email,item.telefone,c?.nomeCargo||'—'];}}
+          {...props}
+        />
+      )}
+      {tab==='materiais' && (
+        <CrudTable title="Material" entity="materiais" items={db.materiais}
+          cols={['Tipo de Material','Estado']}
+          fields={[
+            {key:'tipoMaterial',label:'Tipo de Material',req:true},
+            {key:'estado',label:'Estado',ph:'Ex: Seco, Limpo'},
+          ]}
+          getRow={item=>[item.tipoMaterial,item.estado]}
+          {...props}
+        />
+      )}
+      {tab==='bairros' && (
+        <CrudTable title="Bairro" entity="bairros" items={db.bairros}
+          cols={['Nome','Proximidades','População']}
+          fields={[
+            {key:'nomeBairro',label:'Nome do Bairro',req:true},
+            {key:'proximidades',label:'Proximidades'},
+            {key:'populacao',label:'População',type:'number'},
+            {key:'referencia',label:'Referência',col:'col-12'},
+          ]}
+          getRow={item=>[item.nomeBairro,item.proximidades,item.populacao]}
+          {...props}
+        />
+      )}
+      {tab==='cargos' && (
+        <CrudTable title="Cargo" entity="cargos" items={db.cargos}
+          cols={['Nome do Cargo','Salário','Nível Hierarquia']}
+          fields={[
+            {key:'nomeCargo',label:'Nome do Cargo',req:true},
+            {key:'salario',label:'Salário (R$)',type:'number',ph:'2000.00'},
+            {key:'nivelHierarquia',label:'Nível de Hierarquia',type:'number'},
+            {key:'descricao',label:'Descrição',col:'col-12'},
+          ]}
+          getRow={item=>[item.nomeCargo,`R$ ${item.salario}`,item.nivelHierarquia]}
+          {...props}
+        />
+      )}
+      {tab==='depositos' && (
+        <CrudTable title="Depósito" entity="depositos" items={db.depositos}
+          cols={['Nome','CNPJ','Localização']}
+          fields={[
+            {key:'nomeDeposito',label:'Nome do Depósito',req:true},
+            {key:'cnpj',label:'CNPJ',ph:'00.000.000/0001-00'},
+            {key:'localizacao',label:'Localização',col:'col-12'},
+          ]}
+          getRow={item=>[item.nomeDeposito,item.cnpj,item.localizacao]}
+          {...props}
+        />
+      )}
+      {tab==='empresas' && (
+        <CrudTable title="Empresa Terceirizada" entity="empresas" items={db.empresas}
+          cols={['Nome da Empresa','CNPJ']}
+          fields={[
+            {key:'nome',label:'Nome da Empresa',req:true},
+            {key:'cnpj',label:'CNPJ',ph:'00.000.000/0001-00'},
+          ]}
+          getRow={item=>[item.nome,item.cnpj]}
+          {...props}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ================================================================
+   APP ROOT
+================================================================ */
+function App() {
+  const [db, setDB] = useDB();
+  const [page, setPage] = useState('Dashboard');
+  const [toasts, setToasts] = useState([]);
+
+  function toast(msg, type='success') {
+    const id = Date.now() + Math.random();
+    setToasts(p => [...p, {id,msg,type}]);
+    setTimeout(() => setToasts(p => p.filter(t=>t.id!==id)), 3800);
+  }
+
+  const shared = { db, setDB, toast };
+
+  return (
+    <>
+      <Sidebar page={page} setPage={setPage}/>
+      <main className="main-content">
+        {page==='Dashboard'          && <Dashboard {...shared}/>}
+        {page==='Pedido de Coleta'   && <PedidoColetaPage {...shared}/>}
+        {page==='Recebimento'        && <RecebimentoPage {...shared}/>}
+        {page==='Envio de Materiais' && <EnvioPage {...shared}/>}
+        {page==='Relatórios'         && <RelatoriosPage {...shared}/>}
+        {page==='Cadastros'          && <CadastrosPage {...shared}/>}
+      </main>
+      <Toast toasts={toasts} dismiss={id=>setToasts(p=>p.filter(t=>t.id!==id))}/>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

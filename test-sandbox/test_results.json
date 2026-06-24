@@ -1,0 +1,30 @@
+{
+  "errors": [],
+  "pages": {
+    "Dashboard": "PASS",
+    "Pedido de Coleta": "PASS",
+    "Recebimento": "PASS",
+    "Envio de Materiais": "PASS",
+    "Relatórios": "PASS",
+    "Cadastros": "PASS"
+  },
+  "cruds": {
+    "pedidoColetaInsert": "PASS",
+    "pedidoColetaTableRowAdded": "PASS",
+    "pedidoColetaValidationLimit": "PASS",
+    "recebimentoRoleValidation": "PASS",
+    "recebimentoInsert": "PASS",
+    "recebimentoTableRowAdded": "PASS",
+    "clientInsert": "PASS",
+    "clientTableRowAdded": "PASS",
+    "clientEdit": "PASS",
+    "clientNameUpdated": "PASS",
+    "clientDelete": "PASS",
+    "clientTableRowRemoved": "PASS"
+  },
+  "responsiveness": {
+    "desktop": "PASS",
+    "mobile": "PASS"
+  },
+  "consoleErrors": []
+}

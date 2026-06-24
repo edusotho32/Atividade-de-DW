@@ -1,0 +1,11 @@
+# Dependências do Node (Puppeteer)
+**/node_modules/
+
+# Logs do sistema
+*.log
+npm-debug.log*
+
+# Arquivos do Sistema Operacional
+.DS_Store
+Thumbs.db
+Desktop.ini
